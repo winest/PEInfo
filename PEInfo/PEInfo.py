@@ -1,14 +1,16 @@
-#pip3 install configparser, pefile, xlsxwriter, and chardet
+#pip3 install configparser pefile xlsxwriter chardet
 import os
 import sys
 import logging
 import traceback
 import configparser
-import fnmatch
 import time
+import fnmatch
 import xlsxwriter
 
 from HandleBasicInfo import *
+from HandleDetux import *
+from HandleVirusTotal import *
 
 
 
@@ -16,7 +18,7 @@ if __name__ == "__main__" :
     logging.basicConfig( format="[%(asctime)s][%(levelname)s][%(process)04X:%(thread)04X][%(filename)s][%(funcName)s_%(lineno)d]: %(message)s" , level=logging.DEBUG )
 
     if len( sys.argv ) <= 1 :
-        print( "Usage: {} <FileOrDirectoryPath>".format( os.path.basename( sys.argv[0] ) ) )
+        print( "Usage: {} <File Path/Directory Path/Hashes Separated By \";\">".format( os.path.basename( sys.argv[0] ) ) )
         print( "Press any key to leave" )
         input()
         sys.exit( 0 )
@@ -33,6 +35,7 @@ if __name__ == "__main__" :
     
         #Get the list of filenames
         g_setFilePaths = set()
+        g_setHashes = set()
         strPath = sys.argv[1]
         print( "Search {0:s} under \"{1:s}\"".format(g_config["General"]["FilenameFilter"],strPath) )
         if ( os.path.isfile(strPath) ) :
@@ -43,7 +46,17 @@ if __name__ == "__main__" :
                 for filename in fnmatch.filter( filenames , g_config["General"]["FilenameFilter"] ) :
                     g_setFilePaths.add( os.path.join( dirpath , filename ) )
         else :
-            raise ValueError( "Neither file nor directory" , strPath )
+            print( "File or directory not found. Assuming it's hash split by \";\"" )
+            reMd5 = re.compile( "[a-fA-F0-9]{32}" );
+            reSha1 = re.compile( "[a-fA-F0-9]{40}" );
+            reSha256 = re.compile( "[a-fA-F0-9]{64}" );
+            for hash in strPath.split( ";" ) :
+                if ( reMd5.match(hash) or reSha1.match(hash) or reSha256.match(hash) ) :
+                    g_setHashes.add( hash )
+                else :
+                    raise ValueError( "Invalid input parameter: {}".format(hash) )
+
+            
 
         #Create excel if needed
         g_bWriteExcel = ( False != g_config.getboolean( "General" , "WriteExcel" ) )
@@ -59,7 +72,14 @@ if __name__ == "__main__" :
             g_excelFmt["WrapVcenter"] = g_excel.add_format( {"text_wrap" : 1 , "valign" : "vcenter"} )
 
         #Start to get file information
-        HandleBasicInfo( g_setFilePaths , g_config , g_excel , g_excelFmt , g_strMainDir )
+        if ( len(g_setFilePaths) ) :
+            HandleBasicInfo( g_setFilePaths , g_config , g_excel , g_excelFmt , g_strMainDir )
+
+        if ( False != g_config.getboolean( "Features" , "VirusTotal" ) ) :
+            HandleVirusTotal( g_setHashes , g_config , g_excel , g_excelFmt )
+
+        if ( False != g_config.getboolean( "Features" , "Detux" ) ) :
+            HandleDetux( g_setHashes , g_config , g_excel , g_excelFmt )
 
         #Close the excel
         if g_bWriteExcel :

@@ -38,6 +38,6 @@ class CExcelColumnInfo :
     def __init__( aSelf , aColIndex , aColNameRegex , aColWidth , aColFormat ) :
         aSelf.nColIndex = aColIndex
         aSelf.strColId = chr( ord('A') + aColIndex )
-        aSelf.reColName = re.compile( aColNameRegex )
+        aSelf.reColName = re.compile( aColNameRegex , re.IGNORECASE )
         aSelf.nColWidth = aColWidth
         aSelf.strColFormat = aColFormat
