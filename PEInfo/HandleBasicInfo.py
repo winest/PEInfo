@@ -14,18 +14,19 @@ from collections import defaultdict
 
 from Singleton import *
 from ExcelInfo import *
+from HashInfo import *
 
 
 
 
 class CPeid( metaclass = Singleton ) :
-    def __init__( self , aPatternFile ) :
+    def __init__( aSelf , aPatternFile ) :
         with open( aPatternFile , "rt" , encoding="utf8" ) as db :
-            self._sig = peutils.SignatureDatabase( data = db.read() )
-    def Match( self , aPe , aEpOnly=True , aSectionStartOnly=False ) :
-        return self._sig.match( aPe , aEpOnly , aSectionStartOnly )
-    def MatchAll( self , aPe , aEpOnly=True , aSectionStartOnly=False ) :
-        return self._sig.match_all( aPe , aEpOnly , aSectionStartOnly )
+            aSelf._sig = peutils.SignatureDatabase( data = db.read() )
+    def Match( aSelf , aPe , aEpOnly=True , aSectionStartOnly=False ) :
+        return aSelf._sig.match( aPe , aEpOnly , aSectionStartOnly )
+    def MatchAll( aSelf , aPe , aEpOnly=True , aSectionStartOnly=False ) :
+        return aSelf._sig.match_all( aPe , aEpOnly , aSectionStartOnly )
 
 
 
@@ -159,6 +160,9 @@ def HandleBasicInfo( aFilePaths , aConfig , aExcel , aExcelFmts , aMainDir ) :
             if ( False != aConfig.getboolean( "Features" , "BasicHash" ) ) :
                 lsHasherNames = [ "md5" , "sha1" , "sha256" ]   #Case-sensitive
                 lsHashes = GetFileHashes( strFilePath , lsHasherNames )
+
+                CHashes().Add( CHashItem( aMd5 = lsHashes[lsHasherNames.index("md5")] , aSha1 = lsHashes[lsHasherNames.index("sha1")] , aSha256 = lsHashes[lsHasherNames.index("sha256")] ) )
+
                 strTmpHash = ""
                 for strHasherName , strHash in zip(lsHasherNames , lsHashes) :
                     strHasherNameDisplay = strHasherName.upper() if strHasherName.islower() or strHasherName.isupper() else strHasherName

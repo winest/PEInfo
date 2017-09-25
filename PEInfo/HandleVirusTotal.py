@@ -10,11 +10,13 @@ import json
 import requests
 import http.client
 import xlsxwriter
+import copy
 
 from collections import defaultdict
 from gzip import GzipFile
 
 from ExcelInfo import *
+from HashInfo import *
 
 
 
@@ -89,7 +91,7 @@ class CVirusTotal :
             #'permalink': 'https://www.virustotal.com/file/52d3df0ed60c46f336c131bf2ca454f73bafdc4b04dfa2aea80746f5ba9e6d1c/analysis/1273894724/'
             #}
             if "response_code" in parsed and 1 == parsed["response_code"] :
-                lsSimpleFields = [ "md5" , "sha1" , "sha1256" ]
+                lsSimpleFields = [ "md5" , "sha1" , "sha256" ]
                 for field in lsSimpleFields :
                     if field in parsed and 0 < len(parsed[field]) :
                         d[field] = parsed[field]
@@ -111,7 +113,7 @@ class CVirusTotal :
 
 
 
-def HandleVirusTotal( aHashes , aConfig , aExcel , aExcelFmts ) :
+def HandleVirusTotal( aConfig , aExcel , aExcelFmts ) :
     #Get config
     bWriteExcel = ( False != aConfig.getboolean( "General" , "WriteExcel" ) )
     nTimeout = aConfig.getint( "General" , "QueryTimeout" ) / 1000
@@ -152,13 +154,20 @@ def HandleVirusTotal( aHashes , aConfig , aExcel , aExcelFmts ) :
     #Start to get hash information
     uCount = 0
     vt = CVirusTotal( strApiKey )
-    for strHash in aHashes :
+    for hashItem in CHashes().ValuesCopy() :
+        strHash = hashItem.sha256 or hashItem.sha1 or hashItem.md5
         print( "Checking VirusTotal for {}".format( strHash ) )
 
         result = vt.Query( strHash , nTimeout , nMaxRetryCnt )
         if result :
+            strMd5 = result["md5"] if "md5" in result else None
+            strSha1 = result["sha1"] if "sha1" in result else None
+            strSha256 = result["sha256"] if "sha256" in result else None
+            CHashes().Add( CHashItem(aMd5 = strMd5 , aSha1 = strSha1 , aSha256 = strSha256) )
+
             for key , value in result.items() :
                 print( "{} = {}".format( key , value ) )
+
                 if bWriteExcel :
                     nColIndex = -1
                     for strColName , info in sheetInfo.GetColumns().items() :

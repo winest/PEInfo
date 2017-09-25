@@ -10,11 +10,13 @@ import json
 import urllib.request
 import http.client
 import xlsxwriter
+import copy
 
 from collections import defaultdict
 from gzip import GzipFile
 
 from ExcelInfo import *
+from HashInfo import *
 
 
 
@@ -26,6 +28,10 @@ class CDetux :
                                    "Accept-Encoding": "gzip, deflate" }
         aSelf.m_strApiKey = aApiKey
 
+        aSelf.reMd5 = re.compile( "^[a-fA-F0-9]{32}$" );
+        aSelf.reSha1 = re.compile( "^[a-fA-F0-9]{40}$" );
+        aSelf.reSha256 = re.compile( "^[a-fA-F0-9]{64}$" );
+
     def Query( aSelf , aHash , aTimeout = 10 , aRetryCnt = 5 ) :
         if not aHash :
             return None
@@ -33,9 +39,20 @@ class CDetux :
             logging.info( "{}: Cache hit".format(aHash) )
             return aSelf.m_dictCache[aHash]
         else :
+            strHashType = ""
+            if aSelf.reSha256.match(aHash) :
+                strHashType = "sha256"
+            elif aSelf.reSha1.match(aHash) :
+                strHashType = "sha1"
+            elif aSelf.reMd5.match(aHash) :
+                strHashType = "md5"
+            else :
+                logging.error( "Hash type is invalid" )
+                return None
+
             while aRetryCnt > 0 :
                 try :
-                    params = urllib.parse.urlencode( { "api_key" : aSelf.m_strApiKey , "sha256" : aHash } )
+                    params = urllib.parse.urlencode( { "api_key" : aSelf.m_strApiKey , strHashType : aHash } )
                     req = urllib.request.Request( "https://detux.org/api/report.php" , headers = aSelf.m_strHttpHeaders )
                     rsp = urllib.request.urlopen( req , params.encode("utf-8") , aTimeout )
                     strEncoding = rsp.info().get( "Content-Encoding" )
@@ -86,7 +103,7 @@ class CDetux :
 
 
 
-def HandleDetux( aSha256s , aConfig , aExcel , aExcelFmts ) :
+def HandleDetux( aConfig , aExcel , aExcelFmts ) :
     #Get config
     bWriteExcel = ( False != aConfig.getboolean( "General" , "WriteExcel" ) )
     nTimeout = aConfig.getint( "General" , "QueryTimeout" ) / 1000
@@ -101,15 +118,15 @@ def HandleDetux( aSha256s , aConfig , aExcel , aExcelFmts ) :
 
         #Set interesting fields information
         sheetInfo = CExcelSheetInfo( SHEET_NAME )
-        sheetInfo.AddColumn( "md5"              , CExcelColumnInfo( 0 , "md5" , 46 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "sha1"             , CExcelColumnInfo( 1 , "sha1" , 46 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "sha256"           , CExcelColumnInfo( 2 , "sha256" , 32 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "status"           , CExcelColumnInfo( 3 , "status" , 46 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "orig_file_name"   , CExcelColumnInfo( 4 , "orig_file_name" , 46 , aExcelFmts["WrapTop"] ) )
-        sheetInfo.AddColumn( "filetype"         , CExcelColumnInfo( 5 , "filetype" , 46 , aExcelFmts["WrapTop"] ) )
-        sheetInfo.AddColumn( "tag"              , CExcelColumnInfo( 6 , "tag" , 46 , aExcelFmts["WrapTop"] ) )
-        sheetInfo.AddColumn( "sample_filepath"  , CExcelColumnInfo( 7 , "sample_filepath" , 46 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "pcap_filepath"    , CExcelColumnInfo( 8 , "pcap_filepath" , 46 , aExcelFmts["Top"] ) )
+        sheetInfo.AddColumn( "md5"              , CExcelColumnInfo( 0 , "md5" , 20 , aExcelFmts["Top"] ) )
+        sheetInfo.AddColumn( "sha1"             , CExcelColumnInfo( 1 , "sha1" , 20 , aExcelFmts["Top"] ) )
+        sheetInfo.AddColumn( "sha256"           , CExcelColumnInfo( 2 , "sha256" , 20 , aExcelFmts["Top"] ) )
+        sheetInfo.AddColumn( "status"           , CExcelColumnInfo( 3 , "status" , 10 , aExcelFmts["Top"] ) )
+        sheetInfo.AddColumn( "orig_file_name"   , CExcelColumnInfo( 4 , "orig_file_name" , 40 , aExcelFmts["WrapTop"] ) )
+        sheetInfo.AddColumn( "filetype"         , CExcelColumnInfo( 5 , "filetype" , 40 , aExcelFmts["WrapTop"] ) )
+        sheetInfo.AddColumn( "tag"              , CExcelColumnInfo( 6 , "tag" , 20 , aExcelFmts["WrapTop"] ) )
+        sheetInfo.AddColumn( "sample_filepath"  , CExcelColumnInfo( 7 , "sample_filepath" , 40 , aExcelFmts["Top"] ) )
+        sheetInfo.AddColumn( "pcap_filepath"    , CExcelColumnInfo( 8 , "pcap_filepath" , 40 , aExcelFmts["Top"] ) )
         sheetInfo.AddColumn( "Raw"              , CExcelColumnInfo( 9 , "Raw" , 100 , aExcelFmts["WrapTop"] ) )
 
         #Initialize sheet by sheetInfo
@@ -129,11 +146,17 @@ def HandleDetux( aSha256s , aConfig , aExcel , aExcelFmts ) :
     #Start to get hash information
     uCount = 0
     detux = CDetux( strApiKey )    
-    for strSha256 in aSha256s :
-        print( "Checking Detux for {}".format( strSha256 ) )
+    for hashItem in CHashes().ValuesCopy() :
+        strHash = hashItem.sha256 or hashItem.sha1 or hashItem.md5
+        print( "Checking Detux for {}".format( strHash ) )
         
-        result = detux.Query( strSha256 , nTimeout , nMaxRetryCnt )
+        result = detux.Query( strHash , nTimeout , nMaxRetryCnt )
         if result :
+            strMd5 = result["md5"] if "md5" in result else None
+            strSha1 = result["sha1"] if "sha1" in result else None
+            strSha256 = result["sha256"] if "sha256" in result else None
+            CHashes().Add( CHashItem(aMd5 = strMd5 , aSha1 = strSha1 , aSha256 = strSha256) )
+
             for key , value in result.items() :
                 print( "{} = {}".format( key , value ) )
                 if bWriteExcel :
