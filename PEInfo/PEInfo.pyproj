@@ -13,7 +13,7 @@
     <Name>PEInfo</Name>
     <RootNamespace>PEInfo</RootNamespace>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>C:\Windows\System32\calc.exe;91d09aa061b18c3b3c640c0bad04760ce8d0817c373449d1e3cb42e3d6365910;a03fe2d6566d7e9c167216acb55d3f6c</CommandLineArguments>
+    <CommandLineArguments>-f "F:\Code\Python\Complete\PEInfo\PEInfo\Test.txt" C:\Windows\System32\calc.exe;91d09aa061b18c3b3c640c0bad04760ce8d0817c373449d1e3cb42e3d6365910;a1acda6a785aeebb5264fccb5f93f76e760027be;a03fe2d6566d7e9c167216acb55d3f6c</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

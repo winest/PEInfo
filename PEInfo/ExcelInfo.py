@@ -15,10 +15,19 @@ class CExcelSheetInfo :
         aSelf.mapColInfo[aColName] = aExcelColInfo
 
     def GetColumn( aSelf , aColName ) :
-        return aSelf.mapColInfo[aColName]
+        if aColName in aSelf.mapColInfo :
+            return aSelf.mapColInfo[aColName]
+        else :
+            return None
 
     def GetColumns( aSelf ) :
         return aSelf.mapColInfo
+
+    def GetColIndexByName( aSelf , aColName ) :
+        if aColName in aSelf.mapColInfo :
+            return aSelf.mapColInfo[aColName].nColIndex
+        else :
+            return -1
 
     def GetColNameByIndex( aSelf , aColIndex ) :
         for strColName , info in aSelf.mapColInfo.items() :

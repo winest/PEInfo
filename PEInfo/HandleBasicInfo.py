@@ -63,7 +63,7 @@ def GetPeid( aPatternFile , aPe ) :
 
 
 def GetCompileTime( aPe ) :
-	return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(aPe.FILE_HEADER.TimeDateStamp) )
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(aPe.FILE_HEADER.TimeDateStamp) )
 
 
 

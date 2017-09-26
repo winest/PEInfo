@@ -155,9 +155,28 @@ def HandleVirusTotal( aConfig , aExcel , aExcelFmts ) :
     uCount = 0
     vt = CVirusTotal( strApiKey )
     for hashItem in CHashes().ValuesCopy() :
-        strHash = hashItem.sha256 or hashItem.sha1 or hashItem.md5
-        print( "Checking VirusTotal for {}".format( strHash ) )
+        #Write the hash we are querying to excel
+        strHash = None
+        nColIndex = -1
+        if hashItem.sha256 :
+            strHash = hashItem.sha256
+            if bWriteExcel :
+                nColIndex = sheetInfo.GetColIndexByName( "sha256" )
+        elif hashItem.sha1 :
+            strHash = hashItem.sha1
+            if bWriteExcel :
+                nColIndex = sheetInfo.GetColIndexByName( "sha1" )
+        elif hashItem.md5 :
+            strHash = hashItem.md5
+            if bWriteExcel :
+                nColIndex = sheetInfo.GetColIndexByName( "md5" )
+        else :
+            raise ValueError( "Hash is invalid" )
+        if 0 <= nColIndex :
+            sheet.write( uCount + 1 , nColIndex , strHash )
 
+        #Start to query
+        print( "Checking VirusTotal for {}".format( strHash ) )
         result = vt.Query( strHash , nTimeout , nMaxRetryCnt )
         if result :
             strMd5 = result["md5"] if "md5" in result else None
