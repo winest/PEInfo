@@ -1,4 +1,3 @@
-#pip3 install configparser xlsxwriter
 import os
 import sys
 import logging
@@ -7,10 +6,9 @@ import configparser
 import time
 import re
 import json
-import requests
+import urllib.request
 import http.client
 import xlsxwriter
-import copy
 
 from collections import defaultdict
 from gzip import GzipFile
@@ -37,17 +35,24 @@ class CVirusTotal :
         else :
             while aRetryCnt > 0 :
                 try :
-                    params = { "apikey" : aSelf.m_strApiKey , "resource" : aHash }
-                    rsp = requests.get( "https://www.virustotal.com/vtapi/v2/file/report" , params = params , headers = aSelf.m_strHttpHeaders )
-                    if rsp.ok and 0 == len(rsp.text) : #Free API can only query 4 times per minute
+                    params = urllib.parse.urlencode( { "apikey" : aSelf.m_strApiKey , "resource" : aHash } )
+                    req = urllib.request.Request( "https://www.virustotal.com/vtapi/v2/file/report" , headers = aSelf.m_strHttpHeaders )
+                    rsp = urllib.request.urlopen( req , params.encode("utf-8") , aTimeout )
+                    strEncoding = rsp.info().get( "Content-Encoding" )
+                    if strEncoding and strEncoding.lower() == "gzip" :
+                        result = GzipFile( fileobj = rsp ).read()
+                    else :
+                        result = rsp.read()
+
+                    if result :
+                        result = json.loads( result.decode( "utf-8" ) )
+                    else :
                         print( "Seems quota reach...sleep 30 seconds" )
                         time.sleep( 30 )
                         continue
-
-                    result = rsp.json()
-                    aSelf.m_strRawResult = rsp.text
+                    aSelf.m_strRawResult = result
                     return aSelf.Parse( aHash , result )
-                except requests.exceptions.RequestException as err :
+                except ( urllib.error.HTTPError , urllib.error.URLError , http.client.HTTPException ) as err :
                     logging.warning( err )
                     aRetryCnt -= 1
                 except Exception as err :
@@ -123,20 +128,19 @@ def HandleVirusTotal( aConfig , aExcel , aExcelFmts ) :
     if ( 64 != len(strApiKey) ) :
         raise ValueError( "VirusTotal's API key is incorrect" )
 
+    #Set interesting fields information
+    SHEET_NAME = "VirusTotal"
+    sheetInfo = CExcelSheetInfo( SHEET_NAME )
+    sheetInfo.AddColumn( "md5"              , CExcelColumnInfo( 0 , "md5" , 20 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "sha1"             , CExcelColumnInfo( 1 , "sha1" , 20 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "sha256"           , CExcelColumnInfo( 2 , "sha256" , 20 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "ESET-NOD32"       , CExcelColumnInfo( 3 , "(ESET-)?NOD32" , 40 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "Kaspersky"        , CExcelColumnInfo( 4 , "Kaspersky" , 40 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "Microsoft"        , CExcelColumnInfo( 5 , "Microsoft" , 40 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "TrendMicro"       , CExcelColumnInfo( 6 , "TrendMicro$" , 40 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "Raw"              , CExcelColumnInfo( 7 , "Raw" , 100 , aExcelFmts["WrapTop"] ) )
+
     if bWriteExcel :
-        SHEET_NAME = "VirusTotal"
-
-        #Set interesting fields information
-        sheetInfo = CExcelSheetInfo( SHEET_NAME )
-        sheetInfo.AddColumn( "md5"              , CExcelColumnInfo( 0 , "md5" , 20 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "sha1"             , CExcelColumnInfo( 1 , "sha1" , 20 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "sha256"           , CExcelColumnInfo( 2 , "sha256" , 20 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "ESET-NOD32"       , CExcelColumnInfo( 3 , "(ESET-)?NOD32" , 40 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "Kaspersky"        , CExcelColumnInfo( 4 , "Kaspersky" , 40 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "Microsoft"        , CExcelColumnInfo( 5 , "Microsoft" , 40 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "TrendMicro"       , CExcelColumnInfo( 6 , "TrendMicro" , 40 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "Raw"              , CExcelColumnInfo( 7 , "Raw" , 100 , aExcelFmts["WrapTop"] ) )
-
         #Initialize sheet by sheetInfo
         sheet = None
         for sheet in aExcel.worksheets() :
@@ -155,25 +159,24 @@ def HandleVirusTotal( aConfig , aExcel , aExcelFmts ) :
     uCount = 0
     vt = CVirusTotal( strApiKey )
     for hashItem in CHashes().ValuesCopy() :
+        #Write default value for all fields
+        for info in sheetInfo.GetColumns().values() :
+            sheet.write( uCount + 1 , info.nColIndex , "<NULL>" )
+
         #Write the hash we are querying to excel
         strHash = None
-        nColIndex = -1
+        if hashItem.md5 :
+            strHash = hashItem.md5
+            if bWriteExcel :
+                sheet.write( uCount + 1 , sheetInfo.GetColIndexByName( "md5" ) , strHash )
+        if hashItem.sha1 :
+            strHash = hashItem.sha1
+            if bWriteExcel :
+                sheet.write( uCount + 1 , sheetInfo.GetColIndexByName( "sha1" ) , strHash )
         if hashItem.sha256 :
             strHash = hashItem.sha256
             if bWriteExcel :
-                nColIndex = sheetInfo.GetColIndexByName( "sha256" )
-        elif hashItem.sha1 :
-            strHash = hashItem.sha1
-            if bWriteExcel :
-                nColIndex = sheetInfo.GetColIndexByName( "sha1" )
-        elif hashItem.md5 :
-            strHash = hashItem.md5
-            if bWriteExcel :
-                nColIndex = sheetInfo.GetColIndexByName( "md5" )
-        else :
-            raise ValueError( "Hash is invalid" )
-        if 0 <= nColIndex :
-            sheet.write( uCount + 1 , nColIndex , strHash )
+                sheet.write( uCount + 1 , sheetInfo.GetColIndexByName( "sha256" ) , strHash )
 
         #Start to query
         print( "Checking VirusTotal for {}".format( strHash ) )
@@ -185,14 +188,13 @@ def HandleVirusTotal( aConfig , aExcel , aExcelFmts ) :
             CHashes().Add( CHashItem(aMd5 = strMd5 , aSha1 = strSha1 , aSha256 = strSha256) )
 
             for key , value in result.items() :
-                print( "{} = {}".format( key , value ) )
-
+                nColIndex = -1
+                for strColName , info in sheetInfo.GetColumns().items() :
+                    if info.reColName.search( key ) != None :
+                        nColIndex = info.nColIndex
+                        print( "    {:16}{}".format( key , value ) )
+                        break
                 if bWriteExcel :
-                    nColIndex = -1
-                    for strColName , info in sheetInfo.GetColumns().items() :
-                        if info.reColName.search( key ) != None :
-                            nColIndex = info.nColIndex
-                            break
                     if isinstance( value , list ) :
                         sheet.write( uCount + 1 , nColIndex , os.linesep.join(value) )
                     else :

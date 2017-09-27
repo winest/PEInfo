@@ -7,7 +7,8 @@ setup(
     options = { 
                   "py2exe" : {
                                  "bundle_files" : 1 ,
-                                 "compressed" : True
+                                 "compressed" : True ,
+                                 "includes" : ["xlsxwriter" , "chardet" , "pefile" , "requests"]
                              }
               }
 )

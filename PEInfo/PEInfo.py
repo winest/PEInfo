@@ -12,8 +12,8 @@ import argparse
 from HashInfo import *
 
 from HandleBasicInfo import *
-from HandleDetux import *
 from HandleVirusTotal import *
+from HandleDetux import *
 
 
 

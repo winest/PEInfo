@@ -120,19 +120,18 @@ def HandleBasicInfo( aFilePaths , aConfig , aExcel , aExcelFmts , aMainDir ) :
     #Get config
     bWriteExcel = ( False != aConfig.getboolean( "General" , "WriteExcel" ) )
 
+    #Set interesting fields information
+    SHEET_NAME = "BasicInfo"
+    sheetInfo = CExcelSheetInfo( SHEET_NAME )
+    sheetInfo.AddColumn( "FileName"    , CExcelColumnInfo( 0 , "FileName" , 20 , aExcelFmts["WrapVcenter"] ) )
+    sheetInfo.AddColumn( "BasicHash"   , CExcelColumnInfo( 1 , "BasicHash" , 46 , aExcelFmts["WrapTop"] ) )
+    sheetInfo.AddColumn( "PEID"        , CExcelColumnInfo( 2 , "PEID" , 32 , aExcelFmts["WrapTop"] ) )
+    sheetInfo.AddColumn( "ImpHash"     , CExcelColumnInfo( 3 , "ImpHash" , 32 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "CompileTime" , CExcelColumnInfo( 4 , "CompileTime" , 18 , aExcelFmts["Top"] ) )
+    sheetInfo.AddColumn( "PDB"         , CExcelColumnInfo( 5 , "PDB" , 90 , aExcelFmts["WrapTop"] ) )
+    sheetInfo.AddColumn( "ExportFunc"  , CExcelColumnInfo( 6 , "ExportFunc" , 90 , aExcelFmts["WrapTop"] ) )
+
     if bWriteExcel :
-        SHEET_NAME = "BasicInfo"
-
-        #Set interesting fields information
-        sheetInfo = CExcelSheetInfo( SHEET_NAME )
-        sheetInfo.AddColumn( "FileName"    , CExcelColumnInfo( 0 , "FileName" , 20 , aExcelFmts["WrapVcenter"] ) )
-        sheetInfo.AddColumn( "BasicHash"   , CExcelColumnInfo( 1 , "BasicHash" , 46 , aExcelFmts["WrapTop"] ) )
-        sheetInfo.AddColumn( "PEID"        , CExcelColumnInfo( 2 , "PEID" , 32 , aExcelFmts["WrapTop"] ) )
-        sheetInfo.AddColumn( "ImpHash"     , CExcelColumnInfo( 3 , "ImpHash" , 32 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "CompileTime" , CExcelColumnInfo( 4 , "CompileTime" , 18 , aExcelFmts["Top"] ) )
-        sheetInfo.AddColumn( "PDB"         , CExcelColumnInfo( 5 , "PDB" , 90 , aExcelFmts["WrapTop"] ) )
-        sheetInfo.AddColumn( "ExportFunc"  , CExcelColumnInfo( 6 , "ExportFunc" , 90 , aExcelFmts["WrapTop"] ) )
-
         #Initialize sheet by sheetInfo
         sheet = None
         for sheet in aExcel.worksheets() :
@@ -151,6 +150,10 @@ def HandleBasicInfo( aFilePaths , aConfig , aExcel , aExcelFmts , aMainDir ) :
     uCount = 0
     for strFilePath in aFilePaths :
         try :
+            #Write default value for all fields
+            for info in sheetInfo.GetColumns().values() :
+                sheet.write( uCount + 1 , info.nColIndex , "<NULL>" )
+
             #Name
             print( "{}:".format( os.path.basename(strFilePath) ) )
             if bWriteExcel :
@@ -166,7 +169,7 @@ def HandleBasicInfo( aFilePaths , aConfig , aExcel , aExcelFmts , aMainDir ) :
                 strTmpHash = ""
                 for strHasherName , strHash in zip(lsHasherNames , lsHashes) :
                     strHasherNameDisplay = strHasherName.upper() if strHasherName.islower() or strHasherName.isupper() else strHasherName
-                    print( "    {:8}{}".format( strHasherNameDisplay , strHash ) )
+                    print( "    {:16}{}".format( strHasherNameDisplay , strHash ) )
                     if bWriteExcel :
                         if 0 < len(strTmpHash) :
                             strTmpHash += os.linesep
@@ -179,40 +182,40 @@ def HandleBasicInfo( aFilePaths , aConfig , aExcel , aExcelFmts , aMainDir ) :
 
             if ( False != aConfig.getboolean( "Features" , "PEID" ) ) :
                 lsPeid = GetPeid( "{}\\_Tools\\userdb.txt".format(aMainDir) , pe )
-                print( "    {:8}{}".format( "PEID" , lsPeid ) )
+                print( "    {:16}{}".format( "PEID" , lsPeid ) )
                 if bWriteExcel :
                     sheet.write( uCount + 1 , sheetInfo.GetColumn("PEID").nColIndex , os.linesep.join(lsPeid) )
 
             if ( False != aConfig.getboolean( "Features" , "ImpHash" ) ) :
                 strImpHash = pe.get_imphash()
-                print( "    {:8}{}".format( "ImpHash" , strImpHash ) )
+                print( "    {:16}{}".format( "ImpHash" , strImpHash ) )
                 if bWriteExcel :
                     sheet.write( uCount + 1 , sheetInfo.GetColumn("ImpHash").nColIndex , strImpHash )
 
             if ( False != aConfig.getboolean( "Features" , "CompileTime" ) ) :
                 strCompileTime = GetCompileTime( pe )
-                print( "    {:8}{}".format( "CompileTime" , strCompileTime ) )
+                print( "    {:16}{}".format( "CompileTime" , strCompileTime ) )
                 if bWriteExcel :
                     sheet.write( uCount + 1 , sheetInfo.GetColumn("CompileTime").nColIndex , strCompileTime )
 
             if ( False != aConfig.getboolean( "Features" , "PDB" ) ) :
                 lsPdb = GetPdbStrings( pe )
-                print( "    {:8}{}".format( "PDB" , lsPdb ) )
+                print( "    {:16}{}".format( "PDB" , lsPdb ) )
                 if bWriteExcel :
                     sheet.write( uCount + 1 , sheetInfo.GetColumn("PDB").nColIndex , os.linesep.join(lsPdb) )
 
             if ( False != aConfig.getboolean( "Features" , "ExportFunc" ) ) :
                 lsExportFuncs = GetExportFuncs( pe )
-                print( "    {:8}{}".format( "Export" , lsExportFuncs ) )
+                print( "    {:16}{}".format( "Export" , lsExportFuncs ) )
                 if bWriteExcel :
                     sheet.write( uCount + 1 , sheetInfo.GetColumn("ExportFunc").nColIndex , os.linesep.join(lsExportFuncs) )
-
-            print( "\n" )
-            uCount = uCount + 1
         except pefile.PEFormatError :
             logging.warning( "{} is not a valid PE file".format(strFilePath) )
         except PermissionError :
             logging.warning( "{} can not be opened".format(strFilePath) )
+
+        print( "\n" )
+        uCount = uCount + 1
     
 
 

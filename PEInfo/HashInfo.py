@@ -32,19 +32,19 @@ class CHashes( metaclass = Singleton ) :
             item.sha1 = aHashItem.sha1 if not item.sha1 else item.sha1
             item.md5 = aHashItem.md5 if not item.md5 else item.md5
 
-            if item.md5 :
-                aSelf.mapMd5Items[item.md5] = item
-            if item.sha1 :
-                aSelf.mapSha1Items[item.sha1] = item
             if item.sha256 :
                 aSelf.mapSha256Items[item.sha256] = item
+            if item.sha1 :
+                aSelf.mapSha1Items[item.sha1] = item
+            if item.md5 :
+                aSelf.mapMd5Items[item.md5] = item
         else :
-            if aHashItem.md5 :
-                aSelf.mapMd5Items[aHashItem.md5] = aHashItem
-            if aHashItem.sha1 :
-                aSelf.mapSha1Items[aHashItem.sha1] = aHashItem
             if aHashItem.sha256 :
                 aSelf.mapSha256Items[aHashItem.sha256] = aHashItem
+            if aHashItem.sha1 :
+                aSelf.mapSha1Items[aHashItem.sha1] = aHashItem
+            if aHashItem.md5 :
+                aSelf.mapMd5Items[aHashItem.md5] = aHashItem            
 
     def Get( aSelf , aHashItem ) :
         if aHashItem.sha256 and aHashItem.sha256 in aSelf.mapSha256Items :
