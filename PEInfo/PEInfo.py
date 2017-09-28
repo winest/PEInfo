@@ -23,13 +23,15 @@ if __name__ == "__main__" :
     if ( 0 == len( strMainDir ) ) :
         strMainDir = "."
     strMainPy = os.path.basename( sys.argv[0] )
+    strMainExt = os.path.splitext( strMainPy )[1]
 
     #Parameter parsing and checking
+    strProgram = "python3 " if strMainExt == ".py" else ""
     cmdParser = argparse.ArgumentParser( description="====================================\n"\
                                                      "Show PE information by winest\n"\
                                                      "====================================" , 
-                                         epilog="Example: python3 {} \"C:\\Windows\\System32\\calc.exe;a03fe2d6566d7e9c167216acb55d3f6c\"\n"
-                                                "         python3 {} -f \"FileList.txt\"".format( strMainPy , strMainPy ) ,
+                                         epilog="Example: {0}{1} \"C:\\Windows\\System32\\calc.exe;a03fe2d6566d7e9c167216acb55d3f6c\"\n"
+                                                "         {0}{1} -f \"FileList.txt\"".format( strProgram , strMainPy ) ,
                                          formatter_class=argparse.RawDescriptionHelpFormatter )
     cmdParser.add_argument( "PathsOrHashes" , nargs="?" , help="File Path/Directory Path/Hashes separated by \";\"" )
     cmdParser.add_argument( "-f" , "--file" , dest="FileWithList" , type=open , help="File which contains file path/directory path/hash for each line" )

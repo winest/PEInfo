@@ -109,7 +109,7 @@ def HandleDetux( aConfig , aExcel , aExcelFmts ) :
     bWriteRaw = ( False != aConfig.getboolean( "Debug" , "WriteRaw" ) )
     strApiKey = aConfig.get( "ApiKeys" , "Detux" )
     if ( 32 != len(strApiKey) ) :
-        raise ValueError( "Detux's API key is incorrect" )
+        raise ValueError( "Detux's API key is incorrect, please check your configuration in PEInfo.ini" )
 
     #Set interesting fields information
     SHEET_NAME = "Detux"

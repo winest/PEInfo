@@ -126,7 +126,7 @@ def HandleVirusTotal( aConfig , aExcel , aExcelFmts ) :
     bWriteRaw = ( False != aConfig.getboolean( "Debug" , "WriteRaw" ) )
     strApiKey = aConfig.get( "ApiKeys" , "VirusTotal" )
     if ( 64 != len(strApiKey) ) :
-        raise ValueError( "VirusTotal's API key is incorrect" )
+        raise ValueError( "VirusTotal's API key is incorrect, please check your configuration in PEInfo.ini" )
 
     #Set interesting fields information
     SHEET_NAME = "VirusTotal"
